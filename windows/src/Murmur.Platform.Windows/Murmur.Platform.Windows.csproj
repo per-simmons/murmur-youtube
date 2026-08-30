@@ -5,6 +5,13 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Murmur.Platform.Windows</RootNamespace>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <!-- REQUIRED for NAudio to ship at all. Class libraries do not copy NuGet dependencies
+         to their bin by default, and Murmur.App picks this layer's output up with a
+         "NAudio*.dll" glob (see Murmur.App.csproj) precisely because it cannot reference
+         this project's dependency graph. Without this, the glob matches nothing, publish
+         succeeds, and audio capture dies at runtime with FileNotFoundException on the first
+         real recording — which is how it escaped CI. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
