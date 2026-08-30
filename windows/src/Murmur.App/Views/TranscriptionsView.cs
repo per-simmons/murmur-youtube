@@ -2,6 +2,7 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
+using Avalonia.Threading;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Murmur.App.Controls;
@@ -48,7 +49,10 @@ public sealed class TranscriptionsView : UserControl
             },
         };
 
-        _store.Changed += (_, _) => Refresh();
+        // Marshalled: Add() is raised from the dictation engine's background thread, and a
+        // straight Refresh() there makes Avalonia throw "Call from invalid thread" — which
+        // travels back through Completed and kills the dictation before injection runs.
+        _store.Changed += (_, _) => Dispatcher.UIThread.Post(Refresh);
         Refresh();
     }
 
