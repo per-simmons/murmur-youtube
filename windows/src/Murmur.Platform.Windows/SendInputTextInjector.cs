@@ -111,9 +111,13 @@ public sealed class SendInputTextInjector : ITextInjector
     /// <remarks>
     /// Injected rather than called directly because clipboard access is UI-framework specific
     /// and must happen on an STA thread — the app supplies an implementation that marshals to
-    /// its own dispatcher.
+    /// its own dispatcher. Settable (not init-only) because the app can only build it once a
+    /// window exists, which is after this injector is constructed. UNSET, THIS IS A LIVE BUG:
+    /// multi-line text falls back to typing REAL Enter keys, and in any chat box Enter sends
+    /// the message — observed as "the chat app sent my half-written prompt when I finished
+    /// dictating".
     /// </remarks>
-    public Func<string, CancellationToken, Task<bool>>? ClipboardPaste { get; init; }
+    public Func<string, CancellationToken, Task<bool>>? ClipboardPaste { get; set; }
 
     /// <inheritdoc />
     public async ValueTask<bool> InjectAsync(string text, CancellationToken cancellationToken)

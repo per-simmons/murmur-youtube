@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Murmur.App.Controls;
 using Murmur.App.Design;
 using Murmur.Core;
@@ -51,7 +52,9 @@ public sealed class DictionaryView : UserControl
             },
         };
 
-        _file.Changed += (_, _) => Refresh();
+        // Marshalled for the same reason as TranscriptionsView: file changes can arrive
+        // from background threads, and UI mutation off the UI thread throws in Avalonia.
+        _file.Changed += (_, _) => Dispatcher.UIThread.Post(Refresh);
         Refresh();
     }
 

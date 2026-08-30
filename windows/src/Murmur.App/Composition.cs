@@ -28,14 +28,22 @@ public sealed class Composition : IAsyncDisposable
         DictionaryFile dictionary,
         TranscriptStore transcripts,
         DictationEngine? engine,
+        ITextInjector? injector,
         bool platformAvailable)
     {
         Settings = settings;
         Dictionary = dictionary;
         Transcripts = transcripts;
         Engine = engine;
+        Injector = injector;
         IsPlatformAvailable = platformAvailable;
     }
+
+    /// <summary>
+    /// The text injector, exposed so the app can wire the clipboard-paste path into it
+    /// once a window (and therefore a clipboard) exists.
+    /// </summary>
+    public ITextInjector? Injector { get; }
 
     /// <summary>User preferences.</summary>
     public AppSettings Settings { get; }
@@ -96,7 +104,7 @@ public sealed class Composition : IAsyncDisposable
             };
         }
 
-        return new Composition(settings, dictionary, transcripts, engine, available);
+        return new Composition(settings, dictionary, transcripts, engine, injector, available);
     }
 
     /// <inheritdoc />

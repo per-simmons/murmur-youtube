@@ -204,6 +204,16 @@ public sealed class DictationEngine : IAsyncDisposable
         var releasedAt = _clock.Now;
         var audio = new ReadOnlyMemory<float>(samples.ToArray());
 
+        // Nothing else ever calls LoadAsync, and TranscribeAsync quietly returns empty on
+        // an unloaded engine — so without this line the app records, "transcribes", and
+        // types nothing, forever, with no error anywhere. Found on the first real-hardware
+        // run: the fakes used in tests are always ready, so no test could catch it.
+        if (!_transcriber.IsReady
+            && !await _transcriber.LoadAsync(CancellationToken.None).ConfigureAwait(false))
+        {
+            return;
+        }
+
         var entries = _dictionary();
         var bias = DictionaryCorrector.BiasPhrases(entries);
 
@@ -233,7 +243,20 @@ public sealed class DictationEngine : IAsyncDisposable
             Text: corrected,
             Corrections: applied);
 
-        Completed?.Invoke(this, result);
+        // A subscriber failing (a UI update from the wrong thread, a full disk breaking the
+        // history write) must not cost the user the text they just dictated — injection is
+        // the product; the event is bookkeeping. This runs inside a discarded task, so an
+        // escaping exception would vanish anyway; swallowing it here at least keeps the
+        // injection alive.
+        try
+        {
+            Completed?.Invoke(this, result);
+        }
+        catch (Exception)
+        {
+            // Deliberately swallowed; see above.
+        }
+
         await _injector.InjectAsync(corrected, CancellationToken.None).ConfigureAwait(false);
     }
 
