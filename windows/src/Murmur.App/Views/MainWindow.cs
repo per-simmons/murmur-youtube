@@ -317,6 +317,26 @@ public sealed class MainWindow : Window
     public VuMeter Meter => _meter;
 
     /// <inheritdoc />
+    /// <inheritdoc />
+    /// <remarks>
+    /// The X hides to the tray; it never truly closes. An Avalonia window cannot be
+    /// re-shown once closed — observed live: close the window, click "Show" in the tray,
+    /// and the whole process died with "Cannot re-show a closed window". Real closing
+    /// happens only on application shutdown, which arrives with a different close reason
+    /// and is let through.
+    /// </remarks>
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        if (e.CloseReason == WindowCloseReason.WindowClosing)
+        {
+            e.Cancel = true;
+            Hide();
+        }
+
+        base.OnClosing(e);
+    }
+
+    /// <inheritdoc />
     protected override void OnClosed(EventArgs e)
     {
         _counterTimer.Stop();
