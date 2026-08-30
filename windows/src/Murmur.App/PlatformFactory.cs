@@ -91,6 +91,46 @@ internal static class PlatformFactory
     public static ITextInjector? CreateTextInjector() =>
         Create<ITextInjector>("SendInputTextInjector", []);
 
+    /// <summary>
+    /// Wires the clipboard-paste path into an injector created by
+    /// <see cref="CreateTextInjector"/>. Without it, multi-line text is typed with REAL
+    /// Enter keys — which, in a chat box, sends the message mid-injection.
+    /// </summary>
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2075:DynamicallyAccessedMembers",
+        Justification = "Murmur.Platform.Windows is published whole and never trimmed.")]
+    public static void AttachClipboardPaste(
+        ITextInjector injector, Func<string, CancellationToken, Task<bool>> paste)
+    {
+        var property = injector.GetType().GetProperty("ClipboardPaste");
+        property?.SetValue(injector, paste);
+    }
+
+    /// <summary>Presses Ctrl+V in the focused app, lifting any resting modifiers first.</summary>
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2075:DynamicallyAccessedMembers",
+        Justification = "Murmur.Platform.Windows is published whole and never trimmed.")]
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2026:RequiresUnreferencedCode",
+        Justification = "Murmur.Platform.Windows is published whole and never trimmed.")]
+    public static bool PressCtrlV()
+    {
+        try
+        {
+            var method = Load()?
+                .GetType($"{Namespace}.SendInputTextInjector")?
+                .GetMethod("PressCtrlV");
+            return method?.Invoke(null, null) is true;
+        }
+        catch (Exception e) when (e is System.Reflection.TargetInvocationException or MissingMethodException)
+        {
+            return false;
+        }
+    }
+
     [UnconditionalSuppressMessage(
         "Trimming",
         "IL2026:RequiresUnreferencedCode",
