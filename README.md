@@ -37,7 +37,7 @@ Then grant two permissions — neither is optional, and neither can be requested
 
 | Permission | Where | Needed for |
 |---|---|---|
-| **Accessibility** | System Settings ▸ Privacy & Security ▸ Accessibility | The `CGEventTap` that sees the hotkey, and the AX text insert |
+| **Accessibility** | System Settings ▸ Privacy & Security ▸ Accessibility | The `CGEventTap` that sees the hotkey, the AX text insert, and the media-pause key |
 | **Microphone** | Prompted on first dictation | Audio capture |
 
 Restart Murmur YouTube after granting Accessibility. Then hold **Right ⌥** and talk.
@@ -110,6 +110,14 @@ transcript, because unstructured tasks have no ordering guarantee.
 tap the instant the callback returns. `AudioChunk`'s `@unchecked Sendable` is only sound
 because `AudioCapture` always allocates fresh storage before handing off.
 
+**Media pausing is a toggle aimed at a moving target.** `MediaPause` posts the system
+play/pause key, which reaches everything the media keys reach — including video in a browser
+tab, which no scripting approach covers without an Automation prompt. But it is a *toggle*,
+so sending it when nothing is playing starts music. `AudioActivity` is the guard: public
+CoreAudio process objects say which apps have a live output stream, and nothing is sent
+unless one does. `MediaRemote`, the obvious alternative, is private and entitlement-gated
+since macOS 15.4.
+
 **Two swappable seams.** `TranscriptionEngine` and `TextFormatter` are protocols so the
 two components most likely to change can change without touching anything else.
 
@@ -122,6 +130,8 @@ Sources/MurmurYouTube/
 │   ├── DictationController.swift   state machine, wires everything
 │   ├── HotkeyMonitor.swift         CGEventTap on .flagsChanged
 │   ├── AudioCapture.swift          AVAudioEngine tap + format conversion + RMS
+│   ├── AudioActivity.swift         which processes are playing audio (CoreAudio)
+│   ├── MediaPause.swift            pause playback while dictating, resume on release
 │   └── TextInjector.swift          AX insert, pasteboard+⌘V fallback
 ├── Transcription/
 │   ├── TranscriptionEngine.swift   protocol + AudioChunk
@@ -194,6 +204,9 @@ events) and confirmed via `/usr/bin/log show --predicate 'subsystem ==
 - Audio capture runs and converts native 48 kHz → 16 kHz for the engine.
 - HUD renders bottom-center at `{{790, 96}, {340, 76}}` without taking focus.
 - Silence produces an empty transcript and injects nothing.
+- Media pausing, driven directly against Spotify: playing → paused on hold → playing again
+  on release; a no-op when nothing is playing; and when the key reaches the wrong app, the
+  stray playback is detected and undone in under a second.
 
 **Not yet verified:** speech → transcript → cleanup → injection. Synthetic key events
 can't produce audio, so this needs a human to hold the key and talk.

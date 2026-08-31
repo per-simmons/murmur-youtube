@@ -216,6 +216,8 @@ private struct MenuContent: View {
             }
         }
 
+        Toggle("Pause media while dictating", isOn: $settings.pauseMedia)
+
         Toggle("Sound", isOn: $settings.soundEnabled)
 
         Divider()

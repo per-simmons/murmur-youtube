@@ -130,6 +130,11 @@ final class DictationController {
 
     private func beginDictation() {
         guard case .idle = state else { return }
+
+        // Before the mic opens, not after: music leaking into the first second of the
+        // utterance is exactly the part the transcriber has least context to recover from.
+        MediaPause.pauseIfPlaying()
+
         state = .starting
         transcript = ""
         holdStarted = Date()
@@ -227,6 +232,11 @@ final class DictationController {
         level = 0
         releasedAt = Date()
 
+        // On release rather than after injection. Cleanup and injection can take seconds,
+        // and by then the user has stopped talking — holding the music back that long makes
+        // the app feel like it hung.
+        MediaPause.resumeIfPaused()
+
         Task { @MainActor in
             // Drain every captured buffer into the engine before asking it to finalize,
             // or the tail of the utterance gets dropped.
@@ -275,6 +285,7 @@ final class DictationController {
 
     private func cancelDictation() {
         capture.stop()
+        MediaPause.resumeIfPaused()
         audioContinuation?.finish()
         audioContinuation = nil
         feedTask?.cancel()
@@ -293,6 +304,7 @@ final class DictationController {
 
     private func teardown() async {
         capture.stop()
+        MediaPause.resumeIfPaused()
         audioContinuation?.finish()
         audioContinuation = nil
         await feedTask?.value
@@ -417,6 +429,7 @@ final class DictationController {
     private func fail(_ message: String) {
         Log.app.error("\(message)")
         capture.stop()
+        MediaPause.resumeIfPaused()
         audioContinuation?.finish()
         audioContinuation = nil
         feedTask?.cancel()

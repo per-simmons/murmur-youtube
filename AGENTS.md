@@ -73,6 +73,23 @@ compute with the clock started *after* model load. Wispr Flow's number is its ow
 `e2eLatency`, which includes a network round trip and its cleanup pass. Don't present them
 as one ranking.
 
+**The media pause sends a toggle, and every odd-looking guard around it is why.**
+`MediaPause` posts the system play/pause key, because that is the only mechanism that
+reaches browser video without an Automation prompt. The key is a toggle, so sending it when
+nothing is playing *starts* music. Hence: it fires only when `AudioActivity` reports a live
+output stream, it verifies the pause actually landed before it will ever queue a resume, and
+it sends the key a second time to undo itself when it didn't. Don't simplify any of the
+three away — the failure mode is the app blasting music at someone mid-sentence.
+
+Two measured numbers that the code depends on, both re-checkable with a `swiftc` harness
+over `AudioActivity.swift` + `MediaPause.swift`:
+
+- `kAudioProcessPropertyIsRunningOutput` stays `true` for **~2.5 s after playback stops**.
+  Any verification deadline shorter than that reports a good pause as a failure and undoes it.
+- `NSSound` output is attributed to **the playing process's own pid**, not to
+  `systemsoundserverd`. That is the only reason the app's own start/stop ticks don't look
+  like a stray app joining in and trip the undo.
+
 **`MainActor.assumeIsolated` will crash the process.** It does not check the claim, it
 asserts it. Use `await MainActor.run` from any non-main-actor context. This took the app
 down once already.

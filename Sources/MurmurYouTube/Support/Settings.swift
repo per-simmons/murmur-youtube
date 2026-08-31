@@ -51,6 +51,12 @@ final class Settings {
         didSet { defaults.set(soundEnabled, forKey: Keys.soundEnabled) }
     }
 
+    /// Send the system play/pause key when a dictation starts, and again when it ends, if
+    /// anything was playing at the time.
+    var pauseMedia: Bool {
+        didSet { defaults.set(pauseMedia, forKey: Keys.pauseMedia) }
+    }
+
     private let defaults = UserDefaults.standard
 
     private enum Keys {
@@ -60,6 +66,7 @@ final class Settings {
         static let engine = "engine"
         static let smartCleanup = "smartCleanup"
         static let compareMode = "compareMode"
+        static let pauseMedia = "pauseMedia"
     }
 
     private init() {
@@ -71,5 +78,6 @@ final class Settings {
         smartCleanup = defaults.object(forKey: Keys.smartCleanup) as? Bool ?? false
         compareMode = defaults.object(forKey: Keys.compareMode) as? Bool ?? false
         soundEnabled = defaults.object(forKey: Keys.soundEnabled) as? Bool ?? true
+        pauseMedia = defaults.object(forKey: Keys.pauseMedia) as? Bool ?? true
     }
 }

@@ -66,11 +66,21 @@ struct SettingsWindow: View {
                         + "corrections run either way.")
                 }
 
+                panel(label: "Playback") {
+                    Toggle(isOn: $settings.pauseMedia) {
+                        Silkscreen(text: "Pause media while dictating")
+                    }
+                    .toggleStyle(.switch)
+                    note("Sends the play/pause key when you start, and again when you let "
+                        + "go — but only if something was actually playing. Reaches anything "
+                        + "the media keys reach, including video in a browser tab.")
+                }
+
                 Spacer()
             }
             .padding(DS.Space.panel)
         }
-        .frame(width: 520, height: 460)
+        .frame(width: 520, height: 580)
     }
 
     private func panel<Content: View>(
