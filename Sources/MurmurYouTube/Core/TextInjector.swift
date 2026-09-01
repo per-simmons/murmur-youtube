@@ -20,16 +20,58 @@ import Foundation
 /// target app, so "the focused element" is still their text field.
 @MainActor
 enum TextInjector {
+    private static var targetApplication: NSRunningApplication?
+    private static var targetElement: AXUIElement?
+
+    static func rememberTargetApplication() {
+        let frontmost = NSWorkspace.shared.frontmostApplication
+        targetApplication = frontmost?.processIdentifier == ProcessInfo.processInfo.processIdentifier
+            ? nil
+            : frontmost
+    }
+
+    static func rememberFocusedElement(in application: NSRunningApplication) {
+        targetApplication = application
+        let appElement = AXUIElementCreateApplication(application.processIdentifier)
+        var focused: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            appElement,
+            kAXFocusedUIElementAttribute as CFString,
+            &focused
+        ) == .success, let focused else {
+            targetElement = nil
+            return
+        }
+        targetElement = unsafeDowncast(focused as AnyObject, to: AXUIElement.self)
+    }
+
     static func insert(_ text: String) {
         guard !text.isEmpty else { return }
 
-        switch insertViaAccessibility(text) {
-        case .inserted:
-            Log.inject.info("inserted via AX (\(text.count) chars)")
-        case .unverified(let reason):
-            Log.inject.info("AX insert not verified (\(reason, privacy: .public)) — pasting")
-            insertViaPasteboard(text)
+        copyToClipboard(text)
+
+        targetApplication?.activate(options: [])
+
+        Task { @MainActor in
+            // App activation is asynchronous; wait for the target to regain focus before
+            // querying accessibility or posting Command-V.
+            try? await Task.sleep(for: .milliseconds(100))
+
+            switch insertViaAccessibility(text) {
+            case .inserted:
+                Log.inject.info("inserted via AX (\(text.count) chars)")
+            case .unverified(let reason):
+                Log.inject.info("AX insert not verified (\(reason, privacy: .public)) — pasting")
+                insertViaPasteboard(text)
+            }
         }
+    }
+
+    private static func copyToClipboard(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        Log.inject.info("copied to clipboard (\(text.count) chars)")
     }
 
     private enum AXOutcome {
@@ -40,18 +82,21 @@ enum TextInjector {
     // MARK: - Strategy 1: Accessibility, verified
 
     private static func insertViaAccessibility(_ text: String) -> AXOutcome {
-        let systemWide = AXUIElementCreateSystemWide()
-
-        var focused: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(
-            systemWide,
-            kAXFocusedUIElementAttribute as CFString,
-            &focused
-        ) == .success, let focused else {
-            return .unverified("no focused element")
+        let element: AXUIElement
+        if let targetElement {
+            element = targetElement
+        } else {
+            let systemWide = AXUIElementCreateSystemWide()
+            var focused: CFTypeRef?
+            guard AXUIElementCopyAttributeValue(
+                systemWide,
+                kAXFocusedUIElementAttribute as CFString,
+                &focused
+            ) == .success, let focused else {
+                return .unverified("no focused element")
+            }
+            element = unsafeDowncast(focused as AnyObject, to: AXUIElement.self)
         }
-
-        let element = unsafeDowncast(focused as AnyObject, to: AXUIElement.self)
 
         var settable: DarwinBoolean = false
         guard AXUIElementIsAttributeSettable(
@@ -112,18 +157,6 @@ enum TextInjector {
     // MARK: - Strategy 2: Pasteboard + ⌘V
 
     private static func insertViaPasteboard(_ text: String) {
-        let pasteboard = NSPasteboard.general
-        let saved = pasteboard.pasteboardItems?.compactMap { item -> [NSPasteboard.PasteboardType: Data] in
-            var copy: [NSPasteboard.PasteboardType: Data] = [:]
-            for type in item.types {
-                if let data = item.data(forType: type) { copy[type] = data }
-            }
-            return copy
-        }
-
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
-
         Task { @MainActor in
             // Give the target app a moment to observe the new pasteboard generation before
             // ⌘V arrives, or a fast paste can grab the *previous* contents.
@@ -132,9 +165,9 @@ enum TextInjector {
             Log.inject.info("pasted (\(text.count) chars)")
 
             // The paste is asynchronous in the target app; restore only once it's had time
-            // to read the pasteboard.
+            // to read the pasteboard. Keep the transcript available for the user afterward.
             try? await Task.sleep(for: .milliseconds(500))
-            restore(saved, to: pasteboard)
+            copyToClipboard(text)
         }
     }
 
@@ -155,17 +188,4 @@ enum TextInjector {
         up.post(tap: .cghidEventTap)
     }
 
-    private static func restore(
-        _ saved: [[NSPasteboard.PasteboardType: Data]]?,
-        to pasteboard: NSPasteboard
-    ) {
-        guard let saved, !saved.isEmpty else { return }
-        pasteboard.clearContents()
-        let items = saved.map { entry -> NSPasteboardItem in
-            let item = NSPasteboardItem()
-            for (type, data) in entry { item.setData(data, forType: type) }
-            return item
-        }
-        pasteboard.writeObjects(items)
-    }
 }

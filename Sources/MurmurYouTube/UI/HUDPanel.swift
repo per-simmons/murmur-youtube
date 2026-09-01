@@ -8,6 +8,8 @@ import SwiftUI
 /// nothing to insert into. Hence `.nonactivatingPanel` plus `canBecomeKey == false`.
 @MainActor
 final class HUDPanel: NSPanel {
+    private var workspaceObservers: [NSObjectProtocol] = []
+
     init(controller: DictationController) {
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 340, height: 76),
@@ -28,6 +30,28 @@ final class HUDPanel: NSPanel {
         hasShadow = false
 
         contentView = NSHostingView(rootView: HUDView(controller: controller))
+
+        let workspaceNotifications = NSWorkspace.shared.notificationCenter
+        workspaceObservers = [
+            workspaceNotifications.addObserver(
+                forName: NSWorkspace.activeSpaceDidChangeNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.restoreVisibleOrdering()
+                }
+            },
+            workspaceNotifications.addObserver(
+                forName: NSWorkspace.didActivateApplicationNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.restoreVisibleOrdering()
+                }
+            },
+        ]
     }
 
     override var canBecomeKey: Bool { false }
@@ -76,5 +100,13 @@ final class HUDPanel: NSPanel {
             // AppKit always calls this on the main thread.
             MainActor.assumeIsolated { self?.orderOut(nil) }
         }
+    }
+
+    /// Space and app switches can change window ordering even for all-Spaces panels.
+    /// Reassert the HUD's ordering only while it is being shown, preserving the focused
+    /// control in the foreground app.
+    private func restoreVisibleOrdering() {
+        guard isVisible else { return }
+        orderFrontRegardless()
     }
 }

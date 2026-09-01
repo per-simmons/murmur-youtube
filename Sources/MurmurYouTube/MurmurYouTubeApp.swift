@@ -48,12 +48,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let controller = DictationController()
     private var hud: HUDPanel?
     private var stateObservation: NSObjectProtocol?
+    private var workspaceObservation: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // A regular app now: dock icon, app menu, standard windows. The HUD is still a
         // non-activating panel, so dictating into another app never steals its focus — that
         // property belongs to the panel, not to the activation policy.
         NSApp.setActivationPolicy(.regular)
+
+        workspaceObservation = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
+                as? NSRunningApplication else { return }
+            Task { @MainActor [weak self] in
+                self?.handleActivatedApplication(application)
+            }
+        }
 
         hud = HUDPanel(controller: controller)
 
@@ -150,6 +163,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Log.app.info("Accessibility granted — hotkey armed")
         }
     }
+
+    private func handleActivatedApplication(_ application: NSRunningApplication) {
+        guard application.processIdentifier != ProcessInfo.processInfo.processIdentifier else {
+            guard let target = lastExternalApplication else { return }
+            TextInjector.rememberFocusedElement(in: target)
+            return
+        }
+        lastExternalApplication = application
+    }
+
+    private var lastExternalApplication: NSRunningApplication?
 }
 
 private struct MenuContent: View {
@@ -180,6 +204,21 @@ private struct MenuContent: View {
     }
 
     var body: some View {
+        Button {
+            if controller.state.isActive {
+                controller.stopButtonRecording()
+            } else {
+                controller.startButtonRecording()
+            }
+        } label: {
+            Label(
+                controller.state.isActive ? "Stop" : "Record",
+                systemImage: controller.state.isActive ? "stop.fill" : "circle.fill"
+            )
+        }
+
+        Divider()
+
         Text("Hold \(settings.pushToTalkKey.displayName) to dictate")
 
         Divider()

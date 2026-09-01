@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:murmur-youtube}",
+            "name": "Debug MurmurYouTube",
+            "target": "MurmurYouTube",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug MurmurYouTube"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:murmur-youtube}",
+            "name": "Release MurmurYouTube",
+            "target": "MurmurYouTube",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release MurmurYouTube"
+        }
+    ]
+}

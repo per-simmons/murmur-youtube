@@ -23,11 +23,14 @@ struct HUDView: View {
             Waveform(level: controller.level, isActive: controller.state == .listening)
                 .frame(width: 76, height: 26)
 
-            Text(label)
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(isError ? Color.red.opacity(0.9) : .primary.opacity(0.85))
-                .lineLimit(2)
-                .truncationMode(.head)
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(displayLines.enumerated()), id: \.offset) { _, line in
+                    Text(line)
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(isError ? Color.red.opacity(0.9) : .primary.opacity(0.85))
+                        .lineLimit(1)
+                }
+            }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .animation(.easeOut(duration: 0.12), value: controller.transcript)
         }
@@ -48,6 +51,26 @@ struct HUDView: View {
     private var isError: Bool {
         if case .error = controller.state { return true }
         return false
+    }
+
+    private var displayLines: [String] {
+        guard controller.state == .listening, !controller.transcript.isEmpty else {
+            return [label]
+        }
+
+        var lines: [String] = []
+        var current = ""
+        for word in controller.transcript.split(whereSeparator: { $0.isWhitespace }) {
+            let candidate = current.isEmpty ? String(word) : "\(current) \(word)"
+            if candidate.count > 32, !current.isEmpty {
+                lines.append(current)
+                current = String(word)
+            } else {
+                current = candidate
+            }
+        }
+        if !current.isEmpty { lines.append(current) }
+        return Array(lines.suffix(2))
     }
 
     private var label: String {

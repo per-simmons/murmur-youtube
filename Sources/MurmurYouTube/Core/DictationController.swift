@@ -114,7 +114,7 @@ final class DictationController {
     /// into another app is a comparison affordance; during ordinary dictation it would mean
     /// every recording silently shipped your audio to a third party's servers.
     func startButtonRecording() {
-        guard case .idle = state else { return }
+        guard state == .idle || isError else { return }
         if Settings.shared.compareMode { WisprTrigger.press() }
         beginDictation()
     }
@@ -129,7 +129,7 @@ final class DictationController {
     // MARK: - Dictation
 
     private func beginDictation() {
-        guard case .idle = state else { return }
+        guard state == .idle || isError else { return }
         state = .starting
         transcript = ""
         holdStarted = Date()
@@ -412,6 +412,11 @@ final class DictationController {
     /// Light smoothing so the waveform glides instead of strobing at buffer rate.
     private func updateLevel(_ new: Float) {
         level += (new - level) * 0.35
+    }
+
+    private var isError: Bool {
+        if case .error = state { return true }
+        return false
     }
 
     private func fail(_ message: String) {
