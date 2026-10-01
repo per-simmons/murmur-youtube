@@ -144,6 +144,18 @@ dependency, no bundled model, no cloud path, real streaming with `.volatileResul
 text appears while you're still talking. The OS downloads and manages model assets, so the
 first run for a locale may pause on `AssetInstallationRequest`.
 
+### Running on macOS 15 (Sequoia)
+
+The package targets macOS 15. `SpeechAnalyzer` and Foundation Models only exist in the
+macOS 26 SDK, so they are compiled in only when `canImport(FoundationModels)` is true and
+used only when `#available(macOS 26, *)`. Everywhere else (for example Xcode 16 on macOS
+15) the app builds and runs on **Parakeet** with the rule-based cleanup: the Apple engine
+choice, compare mode and Smart cleanup are hidden or disabled, and a saved "Apple" setting
+falls back to Parakeet. All of that gating lives in `Support/Platform.swift`.
+
+Parakeet's models (~470 MB) start downloading at launch rather than on the first hold, so
+the first dictation isn't spent waiting on the network.
+
 The intended upgrade is **Parakeet v3** via FluidAudio (CoreML on the Neural Engine) —
 measurably better English WER, ~110× realtime, ~66 MB resident. Implementing
 `TranscriptionEngine` is the entire cost of switching; `DictationController` doesn't

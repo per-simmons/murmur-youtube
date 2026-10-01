@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "MurmurYouTube",
-    platforms: [.macOS(.v26)],
+    platforms: [.macOS(.v15)],
     dependencies: [
         // Parakeet TDT as CoreML on the Neural Engine. Optional at runtime — Apple's
         // SpeechTranscriber remains the default and needs no dependency at all.

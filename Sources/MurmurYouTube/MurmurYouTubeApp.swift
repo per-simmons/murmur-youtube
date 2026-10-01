@@ -71,9 +71,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Parakeet's models take ~20s to load from disk, and that cost lands on whichever
         // dictation touches them first — so the first hold after every launch would stall
         // with the HUD showing nothing. Warm them in the background instead, but only when
-        // they're actually going to be used and are already downloaded.
+        // they're actually going to be used. That includes the first-ever run: the 470 MB
+        // download must happen here, at launch, not inside the user's first hold, where it
+        // silently ate the utterance.
         let willUseParakeet = Settings.shared.compareMode || Settings.shared.engine == .parakeet
-        if willUseParakeet, ParakeetModels.isDownloaded {
+        if willUseParakeet {
             Task.detached(priority: .utility) {
                 _ = try? await ParakeetModels.shared.manager()
             }
@@ -197,6 +199,7 @@ private struct MenuContent: View {
         }
 
         Toggle("Compare mode (both engines)", isOn: $settings.compareMode)
+            .disabled(!Platform.appleSpeechAvailable)
 
         if !settings.compareMode {
             Picker("Engine", selection: $settings.engine) {

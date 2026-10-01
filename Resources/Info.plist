@@ -36,7 +36,7 @@
 		</dict>
 	</array>
 	<key>LSMinimumSystemVersion</key>
-	<string>26.0</string>
+	<string>15.0</string>
 	<!-- A regular app: dock icon, app menu, standard windows. The menu bar item remains
 	     for status and the hotkey while you're working elsewhere, but it is secondary. -->
 	<key>LSUIElement</key>

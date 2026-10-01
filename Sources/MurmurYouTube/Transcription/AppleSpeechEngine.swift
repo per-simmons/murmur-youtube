@@ -1,3 +1,4 @@
+#if canImport(FoundationModels)  // proxy for "SDK is macOS 26+": SpeechAnalyzer ships alongside it
 import MurmurDictionary
 import AVFoundation
 import Foundation
@@ -7,6 +8,7 @@ import Speech
 ///
 /// No model ships with the app — the OS downloads and manages the assets, so the first
 /// run for a given locale may block briefly while `AssetInstallationRequest` completes.
+@available(macOS 26.0, *)
 actor AppleSpeechEngine: TranscriptionEngine {
     private let locale: Locale
 
@@ -23,7 +25,7 @@ actor AppleSpeechEngine: TranscriptionEngine {
         self.locale = locale
     }
 
-    func preferredInputFormat() async -> AVAudioFormat? {
+    func preferredInputFormat() async -> sending AVAudioFormat? {
         let module = transcriber ?? Self.makeTranscriber(locale: locale)
         return await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module])
     }
@@ -174,3 +176,4 @@ actor AppleSpeechEngine: TranscriptionEngine {
         }
     }
 }
+#endif

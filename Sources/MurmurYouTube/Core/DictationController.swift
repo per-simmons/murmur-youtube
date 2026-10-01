@@ -15,7 +15,7 @@ func engineForCurrentSetting() -> any TranscriptionEngine {
     // Always invoked from `beginDictation`, which runs on the main actor.
     MainActor.assumeIsolated {
         switch Settings.shared.engine {
-        case .apple: AppleSpeechEngine()
+        case .apple: makeAppleSpeechEngine()
         case .parakeet: ParakeetEngine()
         }
     }
@@ -156,7 +156,7 @@ final class DictationController {
                 // kills the process. Parakeet is the flexible one (its `feed` converts
                 // int16/int32/float32), so the strict engine picks the format and the
                 // tolerant engine adapts. Both still replay the identical buffers.
-                let formatOwner: any TranscriptionEngine = isComparing ? AppleSpeechEngine() : engine
+                let formatOwner: any TranscriptionEngine = isComparing ? makeAppleSpeechEngine() : engine
                 guard let format = await formatOwner.preferredInputFormat() else {
                     throw TranscriptionError.noAudioFormat
                 }

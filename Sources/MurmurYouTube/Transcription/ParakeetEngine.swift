@@ -17,7 +17,7 @@ actor ParakeetEngine: TranscriptionEngine {
     /// Defaults to 16 kHz mono float32 — exactly what Parakeet is trained on.
     private let converter = AudioConverter()
 
-    func preferredInputFormat() async -> AVAudioFormat? {
+    func preferredInputFormat() async -> sending AVAudioFormat? {
         // Parakeet is trained on 16 kHz mono; AudioCapture converts to whatever we ask for.
         AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false)
     }

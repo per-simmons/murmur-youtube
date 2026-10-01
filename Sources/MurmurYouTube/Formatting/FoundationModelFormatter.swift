@@ -1,3 +1,4 @@
+#if canImport(FoundationModels)
 import Foundation
 import FoundationModels
 
@@ -13,7 +14,8 @@ import FoundationModels
 ///   must never cost you an utterance you already spoke.
 /// - **Guarded.** Output is rejected if it looks like the model answered the text instead
 ///   of cleaning it — the classic failure when dictation reads as an instruction.
-struct FoundationModelFormatter: TextFormatter {
+@available(macOS 26.0, *)
+struct OnDeviceLLMFormatter: TextFormatter {
     /// Deterministic fallback used on timeout, unavailability, or a rejected response.
     private let fallback = RuleBasedFormatter()
 
@@ -214,3 +216,4 @@ struct FoundationModelFormatter: TextFormatter {
         var errorDescription: String? { "on-device cleanup timed out" }
     }
 }
+#endif

@@ -28,7 +28,7 @@ struct TranscriptionChunk: Sendable {
 /// intended upgrade — implementing this protocol is the whole cost of switching.
 protocol TranscriptionEngine: Actor {
     /// Audio format the engine wants buffers delivered in. `AudioCapture` converts to it.
-    func preferredInputFormat() async -> AVAudioFormat?
+    func preferredInputFormat() async -> sending AVAudioFormat?
 
     /// Prepare models and open a session. Emits snapshots until `finish()` is called.
     func start() async throws -> AsyncThrowingStream<TranscriptionChunk, Error>

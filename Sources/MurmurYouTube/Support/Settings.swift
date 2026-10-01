@@ -6,6 +6,11 @@ enum SpeechEngineChoice: String, CaseIterable, Sendable {
     case apple
     case parakeet
 
+    /// Apple's engine needs the macOS 26 runtime; on older systems only Parakeet is offered.
+    static var allCases: [SpeechEngineChoice] {
+        Platform.appleSpeechAvailable ? [.apple, .parakeet] : [.parakeet]
+    }
+
     var displayName: String {
         switch self {
         case .apple: "Apple (streaming)"
@@ -66,10 +71,14 @@ final class Settings {
         let raw = defaults.string(forKey: Keys.pushToTalkKey) ?? PushToTalkKey.rightOption.rawValue
         pushToTalkKey = PushToTalkKey(rawValue: raw) ?? .rightOption
         // Apple by default: no download, no dependency, live text while speaking.
-        engine = SpeechEngineChoice(rawValue: defaults.string(forKey: Keys.engine) ?? "") ?? .apple
+        let stored = SpeechEngineChoice(rawValue: defaults.string(forKey: Keys.engine) ?? "")
+        engine = SpeechEngineChoice.allCases.contains(stored ?? .apple) ? (stored ?? .apple) : .parakeet
         cleanupEnabled = defaults.object(forKey: Keys.cleanupEnabled) as? Bool ?? true
-        smartCleanup = defaults.object(forKey: Keys.smartCleanup) as? Bool ?? false
-        compareMode = defaults.object(forKey: Keys.compareMode) as? Bool ?? false
+        smartCleanup = FoundationModelFormatter.isAvailable
+            && (defaults.object(forKey: Keys.smartCleanup) as? Bool ?? false)
+        // Comparison needs both engines, so it is off wherever Apple's isn't available.
+        compareMode = Platform.appleSpeechAvailable
+            && (defaults.object(forKey: Keys.compareMode) as? Bool ?? false)
         soundEnabled = defaults.object(forKey: Keys.soundEnabled) as? Bool ?? true
     }
 }
